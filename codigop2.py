@@ -41,11 +41,8 @@ class CatalogoStreaming:
     
     def buscar(self,id_cancion):
         # Cada usuario envía, por cada canción que escucha, una tupla (id, fecha_hora) con el identificador único de la canción de acuerdo con el catálogo de canciones y la fecha y hora exacta en la que escuchó dicha canción 
-        for cancion in self.canciones:
-            if id_cancion == cancion:
-                return cancion
-        return None
-        
+        res = list(filter(lambda c: c.id_cancion == c.id, self.canciones))
+        return res
               
 class Cancion:
     def __init__(self, id,titulo,fecha,sonoros,sentimentales):
@@ -72,9 +69,11 @@ class Cancion:
 
 class Artista:
     def __init__(self, nombre, fecha, canciones):
-        self. canciones = canciones
         self.nombre = nombre
         self.fecha = fecha
+        self. canciones = canciones
+        self.atributos_sonoros = {}
+        self.atributos_sentimentales = {}
         self.actualizar_media_atributos()
     
     def get_nombre(self):
@@ -91,7 +90,6 @@ class Artista:
         media = lambda x: sum(x)/n
         
         # SONOROS
-        self.atributos_sonoros = {}
         # Sacamos las claves de los atributos sonoros:
         for k in self.canciones.atributos_sonoros.keys():
             # sacamos la lista de valores de k en todas las canciones
@@ -99,7 +97,6 @@ class Artista:
             self.atributos_sonoros[k] = media(list(v))
         
         # SENTIMENTALES
-        self.atributos_sentimentales = {}
         for k in self.canciones.atributos_sentimentales.keys():
             # sacamos la lista de valores de k en todas las canciones
             v = map(lambda c: c.atributos_sentimentales.get(k,0), self.canciones)
@@ -113,6 +110,7 @@ class Playlist:
         self.canciones = canciones
         self.atributos_sonoros = {}
         self.atributos_sentimentales = {}
+        self.actualizar_media_atributos()
    
     def get_titulo(self):
         # para las busquedas
@@ -164,8 +162,12 @@ class DecoradorPlayList(DecoradorRecomendacion):
     def match_playlist(self,estadisticos):
         return self.estrategia_busqueda.aplicarAlgoritmo(self.CatalogoStreaming.playlist, estadisticos)
         
-class StrategyOrdenAlfabetico(RecomendadorStrategy):
-    
+if __name__ == '__main__':
+    cancion1 = Cancion(1,'Hola','2026-23-4', {'ritmo':0.1}, {'felicidad':0.8})
+    cancion2 = Cancion(2,'Adios','2026-23-2', {'ritmo':0.8}, {'felicidad':0.2})
+    cancion3 = Cancion(3,'Buenas','2026-23-1', {'ritmo':0.32}, {'felicidad':0.23})
+
+
 
         
 
