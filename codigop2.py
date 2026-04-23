@@ -38,29 +38,108 @@ class CatalogoStreaming:
         self.canciones = []
         self.playlists = []
         self.artistas = []
-        
     
+    def buscar(self,id_cancion):
+        # Cada usuario envía, por cada canción que escucha, una tupla (id, fecha_hora) con el identificador único de la canción de acuerdo con el catálogo de canciones y la fecha y hora exacta en la que escuchó dicha canción 
+        for cancion in self.canciones:
+            if id_cancion == cancion:
+                return cancion
+        return None
+        
+              
 class Cancion:
-    def __init__(self, id,titulo,fecha):
-        self. atributos_sonoros = {}
-        self. atributos_sentimentales = {}
+    def __init__(self, id,titulo,fecha,sonoros,sentimentales):
         self.id = id
         self.titulo = titulo
         self.fecha = fecha
+        self. atributos_sonoros = sonoros
+        self. atributos_sentimentales = sentimentales
+    
+    def get_titulo(self):
+        # para las busquedas alfabeticas
+        return self.titulo
+    
+    def get_fecha(self):
+        # para busquedas temporales
+        return self.fecha
+
+    def get_atributos_sonoros(self):
+        return {**self.atributos_sonoros}
+    
+    def get_atributos_sentimentales(self):
+        return {**self.atributos_sentimentales}
+        
 
 class Artista:
-    def __init__(self, nombre, fecha):
-        self. canciones = []
-        self.atributos = {}
+    def __init__(self, nombre, fecha, canciones):
+        self. canciones = canciones
         self.nombre = nombre
         self.fecha = fecha
+        self.actualizar_media_atributos()
+    
+    def get_nombre(self):
+        # para las busquedas alfabeticas
+        return self.nombre
+    
+    def get_fecha(self):
+        return self.fecha
+    
+    def actualizar_media_atributos(self):
+        # para calcular la media de los sonores y sentimentales de todas las canciones del artista
+        n = len(self.canciones)
+        # aqui metemos un error de que si n es 0
+        media = lambda x: sum(x)/n
+        
+        # SONOROS
+        self.atributos_sonoros = {}
+        # Sacamos las claves de los atributos sonoros:
+        for k in self.canciones.atributos_sonoros.keys():
+            # sacamos la lista de valores de k en todas las canciones
+            v = map(lambda c: c.atributos_sonoros.get(k,0), self.canciones)
+            self.atributos_sonoros[k] = media(list(v))
+        
+        # SENTIMENTALES
+        self.atributos_sentimentales = {}
+        for k in self.canciones.atributos_sentimentales.keys():
+            # sacamos la lista de valores de k en todas las canciones
+            v = map(lambda c: c.atributos_sentimentales.get(k,0), self.canciones)
+            self.atributos_sentimentales[k] = media(list(v))
+        
 
 class Playlist:
-    def __init__(self, titulo, fecha):
+    def __init__(self, titulo, fecha,canciones):
         self.titulo = titulo
         self.fecha = fecha
-        self. canciones = []
-        self.atributos = {}
+        self.canciones = canciones
+        self.atributos_sonoros = {}
+        self.atributos_sentimentales = {}
+   
+    def get_titulo(self):
+        # para las busquedas
+        return self.titulo
+    
+    def get_fecha(self):
+        return self.fecha
+    
+    def actualizar_media_atributos(self):
+        # para calcular la media de los sonores y sentimentales de todas las canciones del artista
+        n = len(self.canciones)
+        # aqui metemos un error de que si n es 0
+        media = lambda x: sum(x)/n
+        
+        # SONOROS
+        # Sacamos las claves de los atributos sonoros:
+        for k in self.canciones.atributos_sonoros.keys():
+            # sacamos la lista de valores de k en todas las canciones
+            v = map(lambda c: c.atributos_sonoros.get(k,0), self.canciones)
+            self.atributos_sonoros[k] = media(list(v))
+        
+        # SENTIMENTALES
+        for k in self.canciones.atributos_sentimentales.keys():
+            # sacamos la lista de valores de k en todas las canciones
+            v = map(lambda c: c.atributos_sentimentales.get(k,0), self.canciones)
+            self.atributos_sentimentales[k] = media(list(v))
+        
 
 class Recomendador:
     _unicaInstancia = None
@@ -86,8 +165,9 @@ class DecoradorPlayList(DecoradorRecomendacion):
         return self.estrategia_busqueda.aplicarAlgoritmo(self.CatalogoStreaming.playlist, estadisticos)
         
 class StrategyOrdenAlfabetico(RecomendadorStrategy):
-    def 
+    
 
+        
 
     
 
