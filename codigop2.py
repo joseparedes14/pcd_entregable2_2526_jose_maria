@@ -11,7 +11,7 @@ class RecomendadorStrategy(metaclass=ABCMeta):
     '''         
     
     @abstractmethod
-    def aplicarAlgorito(self):
+    def aplicarAlgoritmo(self):
         pass
     
 class Generador(metaclass=ABCMeta):
@@ -41,9 +41,12 @@ class CatalogoStreaming:
         
     
 class Cancion:
-    def __init__(self, id):
-        self. atributos = {}
+    def __init__(self, id,titulo,fecha):
+        self. atributos_sonoros = {}
+        self. atributos_sentimentales = {}
         self.id = id
+        self.titulo = titulo
+        self.fecha = fecha
 
 class Artista:
     def __init__(self, nombre, fecha):
@@ -69,7 +72,23 @@ class Recomendador:
         if not cls._unicaInstancia:
             cls._unicaInstancia = cls()
         return cls._unicaInstancia
+
+class DecoradorPlayList(DecoradorRecomendacion):
     
+    def generar_recomendacion(self,estadisticos):
+        recomendacion_base = self.cancion.recomendar(estadisticos) 
+        playlist_recomendada = self.match_playlist(estadisticos)
+        if playlist_recomendada:
+            recomendacion_base.append(playlist_recomendada)
+        return recomendacion_base
+    
+    def match_playlist(self,estadisticos):
+        return self.estrategia_busqueda.aplicarAlgoritmo(self.CatalogoStreaming.playlist, estadisticos)
+        
+class StrategyOrdenAlfabetico(RecomendadorStrategy):
+    def 
+
+
     
 
         
