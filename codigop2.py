@@ -1,5 +1,7 @@
 # ENTREGA 2
-
+import functools 
+import numpy as np
+from collections import deque # Para la cola de la sesión de escuchase 
 
 # CLASES ABSTRACTAS
 from abc import ABCMeta, abstractmethod
@@ -31,8 +33,90 @@ class DecoradorRecomendacion(metaclass=ABCMeta):
     def __init__(self,generador):
         self.generador = Generador()
 
+# CHAIN OF RESPONSABILITY
+class CalculadorEstadistico(metaclass=ABCMeta):
+    def __init__(self, manejador = None):
+        self.manejador = manejador
+
+    @abstractmethod
+
+    def generar_estadistico(self):
+        pass
+
 
 # OTRAS BÁSICAS
+
+# Desarrollo de las clases de la CHAIN OF RESPONSABILITY
+
+
+class CalculadorMedia(CalculadorEstadistico):
+
+    def manejar_sesion(self, sesion, estadisticos = None):
+        if estadisticos is None:
+            estadisticos = {'atributos_son': {}, 'atributos_sent': {}}
+        
+        for i in sesion[0].atributos_son.keys():
+            estadisticos['atributos_son'][i] =  {'media': functools.reduce(lambda total, x: total + x.atributos_son[i], sesion, 0) / len(sesion)}
+        
+        for i in sesion[0].atributos_sent.keys():
+            estadisticos['atributos_sent'][i] =  {'media': functools.reduce(lambda total, x: total + x.atributos_sent[i], sesion, 0) / len(sesion)}
+    
+
+        if self.manejador is not None:
+            self.manejador.manejar_sesion(sesion, estadisticos)
+        else:
+            return estadisticos
+        
+
+class CalculadorDesviacion(CalculadorEstadistico):
+
+    def manejar_sesion(self, sesion, estadisticos = None):
+        if estadisticos is None:
+            estadisticos = {'atributos_son': {}, 'atributos_sent': {}}
+        
+        n = len(sesion)
+
+        for i in sesion[0].atributos_son.keys():
+            
+            media = estadisticos['atributos_son'].setdefault(i, {}).get('media')
+
+            if media is None:
+                media = sum(x.atributos_son[i] for x in sesion) / len(sesion)
+
+            suma_cuadrados = functools.reduce(lambda total, x: total + (x.atributos_son[i] - media) ** 2, sesion,0)
+
+            estadisticos['atributos_son'][i]['std'] = np.sqrt(suma_cuadrados / n)
+
+        
+        for i in sesion[0].atributos_sent.keys():
+            
+            media = estadisticos['atributos_sent'].setdefault(i, {}).get('media')
+
+            if media is None:
+                media = sum(x.atributos_sent[i] for x in sesion) / len(sesion)
+
+            suma_cuadrados = functools.reduce(lambda total, x: total + (x.atributos_sent[i] - media) ** 2, sesion,0)
+
+            estadisticos['atributos_sent'][i]['std'] = np.sqrt(suma_cuadrados / n)
+
+        if self.manejador is not None:
+            self.manejador.manejar_sesion(sesion, estadisticos)
+        else:
+            return estadisticos
+
+
+
+# La sesión de escuha
+
+class SesionEscucha:
+    def __init__(self):
+        self.cola = deque(maxlen=10)
+        self.estadisticos = CalculadorMedia(CalculadorEstadistico).manejar_sesion(list(self.cola))
+    
+
+    def anyadir_cancion(self, cancion):
+        self.cola.append(cancion)
+
 class CatalogoStreaming:
     def __init__(self):
         self.canciones = []
@@ -43,14 +127,23 @@ class CatalogoStreaming:
         # Cada usuario envía, por cada canción que escucha, una tupla (id, fecha_hora) con el identificador único de la canción de acuerdo con el catálogo de canciones y la fecha y hora exacta en la que escuchó dicha canción 
         res = list(filter(lambda c: c.id_cancion == c.id, self.canciones))
         return res
+    
+    def anyadir_cancion(self, cancion):
+        self.canciones.append(cancion)
+        
+    def anyadir_playlist(self, playlist):
+        self.playlists.append(playlist)
+
+    def anyadir_artista(self, artista):
+        self.artistas.append(artista)
               
 class Cancion:
     def __init__(self, id,titulo,fecha,sonoros,sentimentales):
         self.id = id
         self.titulo = titulo
         self.fecha = fecha
-        self. atributos_sonoros = sonoros
-        self. atributos_sentimentales = sentimentales
+        self.atributos_son = sonoros
+        self.atributos_sent = sentimentales
     
     def get_titulo(self):
         # para las busquedas alfabeticas
@@ -61,17 +154,17 @@ class Cancion:
         return self.fecha
 
     def get_atributos_sonoros(self):
-        return {**self.atributos_sonoros}
+        return {**self.atributos_son}
     
     def get_atributos_sentimentales(self):
-        return {**self.atributos_sentimentales}
+        return {**self.atributos_sent}
         
 
 class Artista:
     def __init__(self, nombre, fecha, canciones):
         self.nombre = nombre
         self.fecha = fecha
-        self. canciones = canciones
+        self.canciones = canciones
         self.atributos_sonoros = {}
         self.atributos_sentimentales = {}
         self.actualizar_media_atributos()
