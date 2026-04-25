@@ -2,6 +2,7 @@
 import functools 
 import numpy as np
 from collections import deque # Para la cola de la sesión de escuchase 
+import random
 
 # CLASES ABSTRACTAS
 from abc import ABCMeta, abstractmethod
@@ -15,15 +16,33 @@ class RecomendadorStrategy(metaclass=ABCMeta):
     @abstractmethod
     def aplicarAlgoritmo(self):
         pass
-    
+
+
+    def match(self, estadisticos, entidad):
+        contador = 0
+
+        for key in estadisticos['atributos_son'].keys():
+            if np.abs(estadisticos['atributos_son'][key]['media'] - entidad.atributos_son[key]) < 1:
+                contador += 1
+        
+        for key in estadisticos['atributos_sent'].keys():
+            if np.abs(estadisticos['atributos_sent'][key]['media'] - entidad.atributos_sent[key]) < 1:
+                contador += 1
+        
+        return (contador > 3)
+     
+
+
+
+
 class Generador(metaclass=ABCMeta):
     '''
 	TAD Generador (DESCRIPCION: Clase abstracta que define la interfaz base para cualquier generador.
 	No puede ser instanciada directamente)
 	'''  
     def __init__(self,recomendaciones,estrategia):
-        self.recomendaciones = {}
-        self.estrategia = RecomendadorStrategy()
+        self.recomendaciones = recomendaciones
+        self.estrategia = estrategia
         
     @abstractmethod
     def generar_recomendacion(self):
@@ -31,7 +50,7 @@ class Generador(metaclass=ABCMeta):
 
 class DecoradorRecomendacion(metaclass=ABCMeta):
     def __init__(self,generador):
-        self.generador = Generador()
+        self.generador = generador
 
 # CHAIN OF RESPONSABILITY
 class CalculadorEstadistico(metaclass=ABCMeta):
@@ -40,11 +59,50 @@ class CalculadorEstadistico(metaclass=ABCMeta):
 
     @abstractmethod
 
-    def generar_estadistico(self):
+    def manejar_sesion(self):
         pass
 
 
 # OTRAS BÁSICAS
+
+# DEFINICIÓN DE LAS ESTRATEGIAS
+
+
+class StrategyAlfabetica(RecomendadorStrategy):
+
+    def aplicarAlgoritmo(self, estadisticos, catalogo):
+
+        if isinstance(catalogo[0], Artista): # Solo en el caso de que sea Artista entonces x debe acceder a atributo "nombre" y no "título"
+
+            artistas_alfabetico = sorted(catalogo, key=lambda x: x.nombre)
+
+            for artista in artistas_alfabetico:
+                matching = self.match(estadisticos, artista)
+                if matching:
+                    return artista
+        
+        else: 
+
+            entidad_alfabetico = sorted(catalogo, key=lambda x: x.titulo)
+
+            for entidad in entidad_alfabetico:
+                matching = self.match(estadisticos, entidad)
+                if matching:
+                    return entidad
+                
+        return None
+
+
+        
+
+
+
+
+
+
+
+
+
 
 # Desarrollo de las clases de la CHAIN OF RESPONSABILITY
 
@@ -63,9 +121,9 @@ class CalculadorMedia(CalculadorEstadistico):
     
 
         if self.manejador is not None:
-            self.manejador.manejar_sesion(sesion, estadisticos)
-        else:
-            return estadisticos
+            return self.manejador.manejar_sesion(sesion, estadisticos)
+        
+        return estadisticos
         
 
 class CalculadorDesviacion(CalculadorEstadistico):
@@ -100,9 +158,9 @@ class CalculadorDesviacion(CalculadorEstadistico):
             estadisticos['atributos_sent'][i]['std'] = np.sqrt(suma_cuadrados / n)
 
         if self.manejador is not None:
-            self.manejador.manejar_sesion(sesion, estadisticos)
-        else:
-            return estadisticos
+            return self.manejador.manejar_sesion(sesion, estadisticos)
+        
+        return estadisticos
 
 
 
@@ -111,11 +169,13 @@ class CalculadorDesviacion(CalculadorEstadistico):
 class SesionEscucha:
     def __init__(self):
         self.cola = deque(maxlen=10)
-        self.estadisticos = CalculadorMedia(CalculadorEstadistico).manejar_sesion(list(self.cola))
+        self.estadisticos = {}
     
 
     def anyadir_cancion(self, cancion):
         self.cola.append(cancion)
+
+        self.estadisticos = CalculadorMedia(CalculadorDesviacion()).manejar_sesion(list(self.cola))
 
 class CatalogoStreaming:
     def __init__(self):
@@ -125,7 +185,7 @@ class CatalogoStreaming:
     
     def buscar(self,id_cancion):
         # Cada usuario envía, por cada canción que escucha, una tupla (id, fecha_hora) con el identificador único de la canción de acuerdo con el catálogo de canciones y la fecha y hora exacta en la que escuchó dicha canción 
-        res = list(filter(lambda c: c.id_cancion == c.id, self.canciones))
+        res = list(filter(lambda c: c.id == id_cancion, self.canciones))
         return res
     
     def anyadir_cancion(self, cancion):
@@ -165,8 +225,8 @@ class Artista:
         self.nombre = nombre
         self.fecha = fecha
         self.canciones = canciones
-        self.atributos_sonoros = {}
-        self.atributos_sentimentales = {}
+        self.atributos_son = {}
+        self.atributos_sent = {}
         self.actualizar_media_atributos()
     
     def get_nombre(self):
@@ -184,16 +244,16 @@ class Artista:
         
         # SONOROS
         # Sacamos las claves de los atributos sonoros:
-        for k in self.canciones.atributos_sonoros.keys():
+        for k in self.canciones[0].atributos_son.keys():
             # sacamos la lista de valores de k en todas las canciones
-            v = map(lambda c: c.atributos_sonoros.get(k,0), self.canciones)
-            self.atributos_sonoros[k] = media(list(v))
+            v = list(map(lambda c: c.atributos_son.get(k,0), self.canciones))
+            self.atributos_son[k] = media(v)
         
         # SENTIMENTALES
-        for k in self.canciones.atributos_sentimentales.keys():
+        for k in self.canciones[0].atributos_sent.keys():
             # sacamos la lista de valores de k en todas las canciones
-            v = map(lambda c: c.atributos_sentimentales.get(k,0), self.canciones)
-            self.atributos_sentimentales[k] = media(list(v))
+            v = list(map(lambda c: c.atributos_sent.get(k,0), self.canciones))
+            self.atributos_sent[k] = media(v)
         
 
 class Playlist:
@@ -201,8 +261,8 @@ class Playlist:
         self.titulo = titulo
         self.fecha = fecha
         self.canciones = canciones
-        self.atributos_sonoros = {}
-        self.atributos_sentimentales = {}
+        self.atributos_son = {}
+        self.atributos_sent = {}
         self.actualizar_media_atributos()
    
     def get_titulo(self):
@@ -220,18 +280,20 @@ class Playlist:
         
         # SONOROS
         # Sacamos las claves de los atributos sonoros:
-        for k in self.canciones.atributos_sonoros.keys():
+        for k in self.canciones[0].atributos_son.keys():
             # sacamos la lista de valores de k en todas las canciones
-            v = map(lambda c: c.atributos_sonoros.get(k,0), self.canciones)
-            self.atributos_sonoros[k] = media(list(v))
+            v = map(lambda c: c.atributos_son.get(k,0), self.canciones)
+            self.atributos_son[k] = media(list(v))
         
         # SENTIMENTALES
-        for k in self.canciones.atributos_sentimentales.keys():
+        for k in self.canciones[0].atributos_sent.keys():
             # sacamos la lista de valores de k en todas las canciones
-            v = map(lambda c: c.atributos_sentimentales.get(k,0), self.canciones)
-            self.atributos_sentimentales[k] = media(list(v))
+            v = map(lambda c: c.atributos_sent.get(k,0), self.canciones)
+            self.atributos_sent[k] = media(list(v))
         
 
+
+# EN STAND-BY
 class Recomendador:
     _unicaInstancia = None
     def __init__(self):
@@ -255,10 +317,24 @@ class DecoradorPlayList(DecoradorRecomendacion):
     def match_playlist(self,estadisticos):
         return self.estrategia_busqueda.aplicarAlgoritmo(self.CatalogoStreaming.playlist, estadisticos)
         
-if __name__ == '__main__':
-    cancion1 = Cancion(1,'Hola','2026-23-4', {'ritmo':0.1}, {'felicidad':0.8})
-    cancion2 = Cancion(2,'Adios','2026-23-2', {'ritmo':0.8}, {'felicidad':0.2})
-    cancion3 = Cancion(3,'Buenas','2026-23-1', {'ritmo':0.32}, {'felicidad':0.23})
+
+
+
+
+
+cancion1 = Cancion(1,'Hola','2026-23-4', {'ritmo':0.1}, {'felicidad':0.8})
+cancion2 = Cancion(2,'Adios','2026-23-2', {'ritmo':0.8}, {'felicidad':0.2})
+cancion3 = Cancion(3,'Buenas','2026-23-1', {'ritmo':0.32}, {'felicidad':0.23})
+
+sesion = SesionEscucha()
+sesion.anyadir_cancion(cancion1)
+sesion.anyadir_cancion(cancion2)
+sesion.anyadir_cancion(cancion3)
+
+
+
+Calculador = CalculadorMedia(CalculadorDesviacion()).manejar_sesion(list(sesion.cola))
+print(Calculador)
 
 
 
