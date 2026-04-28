@@ -4,6 +4,16 @@ import numpy as np
 from collections import deque # Para la cola de la sesión de escuchase 
 import random
 
+
+# Errores
+
+class SingletonException(Exception):
+    pass
+
+
+
+
+
 # CLASES ABSTRACTAS
 from abc import ABCMeta, abstractmethod
 
@@ -99,22 +109,6 @@ class StrategyAleatoria(RecomendadorStrategy):
                 return elegido
             disponibles.remove(elegido)
         return None
-  
-
-
-class Generador(metaclass=ABCMeta):
-    '''
-	TAD Generador (DESCRIPCION: Clase abstracta que define la interfaz base para cualquier generador.
-	No puede ser instanciada directamente)
-	'''  
-    def __init__(self,recomendaciones,estrategia):
-        self.recomendaciones = recomendaciones
-        self.estrategia = estrategia
-        
-    @abstractmethod
-    def generar_recomendacion(self):
-        pass
-
 
 # CHAIN OF RESPONSABILITY
 class CalculadorEstadistico(metaclass=ABCMeta):
@@ -363,14 +357,18 @@ class Recomendador:
     obtener_instancia)
     '''
     _unicaInstancia = None
-    def __init__(self):
-        self.catalogo = CatalogoStreaming()
+    def __init__(self, estrategia, catalogo):
+        if self._unicaInstancia is not None:
+            raise SingletonException('Debes instanciar desde obtener_instancia()')
+
+        self.catalogo = catalogo
+        self.configuracion =  {'artistas':False,'playlists':False, 'estrategia': estrategia}
         self.sesion = SesionEscucha()
     
     @classmethod
-    def obtener_instancia(cls):
-        if not cls._unicaInstancia:
-            cls._unicaInstancia = cls()
+    def obtener_instancia(cls, estrategia, catalogo = None):
+        if cls._unicaInstancia is None:
+            cls._unicaInstancia = cls(estrategia, catalogo)
         return cls._unicaInstancia
     
     def recibir_escucha(self, id_cancion, fecha):
@@ -384,70 +382,124 @@ class Recomendador:
         else:
             #aqui meter un error.
             print('La canción no existe en el catálogo')
+    
+    def recomendar(self):
+        decorador = RecomendacionCancion()
+
+        if self.configuracion['artistas']:
+            decorador = DecoradorArtistas(decorador)
+        if self.configuracion['playlists']:
+            decorador = DecoradorPlayList(decorador)
+        
+        return decorador.generar_recomendacion(self.catalogo, self.sesion.estadisticos, self.configuracion['estrategia'])
             
 
 # DECORADOR
 
-class DecoradorRecomendacion(metaclass=ABCMeta):
+
+  
+
+
+class Generador(metaclass=ABCMeta):
+    '''
+	TAD Generador (DESCRIPCION: Clase abstracta que define la interfaz base para cualquier generador.
+	No puede ser instanciada directamente)
+	'''  
+    
+        
+    @abstractmethod
+    def generar_recomendacion(self):
+        pass
+
+
+
+class DecoradorRecomendacion(Generador):
     ''' 
     TAD DecoradorRecomendacion (DESCRIPCIÓN: Clase base para añadir capas a la recomendación. Por defecto se debe
     recomendar una canción. VALORES: generador(objeto))
     '''
-    def __init__(self,generador):
+
+    def __init__(self, generador):
         self.generador = generador
+
+
+    @abstractmethod
+    def generar_recomendacion(self):
+        pass
+
+
+
+class RecomendacionCancion(Generador):
+
+
+    def generar_recomendacion(self, catalogo, estadisticos, estrategia, recomendaciones = None):
+        if recomendaciones is None:
+            recomendaciones = dict()
+        cancion = estrategia.aplicarAlgoritmo(estadisticos, catalogo.canciones) # Tener en cuenta lo de playlist/listas
+        recomendaciones['cancion'] = cancion
+        return recomendaciones
+
+
+
         
 class DecoradorPlayList(DecoradorRecomendacion):
     '''
     TAD DecoradorPlayList (DESCRIPCIÓN: Extensión que añade a recomendar una playlist a la recomendación base.
     OPERACIONES: generar_recomendacion, match_playlist.
     '''
-    def generar_recomendacion(self,estadisticos):
-        recomendacion_base = self.cancion.recomendar(estadisticos) 
-        playlist_recomendada = self.match_playlist(estadisticos)
-        if playlist_recomendada:
-            recomendacion_base.append(playlist_recomendada)
-        return recomendacion_base
+    def generar_recomendacion(self, catalogo, estadisticos, estrategia, recomendaciones = None):
+        if recomendaciones is None:
+            recomendaciones = {}
+        playlist = estrategia.aplicarAlgoritmo(estadisticos, catalogo.playlists)
+        recomendaciones['playlist'] = playlist
+        return self.generador.generar_recomendacion(catalogo, estadisticos, estrategia, recomendaciones)
     
-    def match_playlist(self,estadisticos):
-        return self.estrategia_busqueda.aplicarAlgoritmo(self.CatalogoStreaming.playlist, estadisticos)
-  
+
 class DecoradorArtistas(DecoradorRecomendacion):
     
-    def match_artista(self,estadisticos):
-        return self.estrategia_busqueda.aplicarAlgoritmo(self.CatalogoStreaming.artista, estadisticos)
-    
-    def generar_recomendacion(self,estadisticos):
-        recomendacion_base = self.cancion.recomendar(estadisticos) 
-        artista_recomendado = self.match_artista(estadisticos)
-        if artista_recomendado:
-            recomendacion_base.append(artista_recomendado)
-        return recomendacion_base
+    def generar_recomendacion(self, catalogo, estadisticos, estrategia, recomendaciones = None):
+        if recomendaciones is None:
+            recomendaciones = {}
+
+        artista = estrategia.aplicarAlgoritmo(estadisticos, catalogo.artistas)
+        recomendaciones['artista'] = artista
+        return self.generador.generar_recomendacion(catalogo, estadisticos, estrategia, recomendaciones)
 
 # CLASE CON LA QUE INTERACTÚA EL USUARIO
 class PlataformaStreaming:
     
-    def __init__(self,catalogo):
-        self.catalogo = catalogo
-        self.configuracion_usuario = {'artistas':False,'playlists':False} # por defecto solo canciones
+    def __init__(self, catalogo):
+        estrategia_predet = StrategyAleatoria()
+        self.recomendador = Recomendador.obtener_instancia(estrategia_predet, catalogo)
     
     def establecer_configuracion(self, artistas, playlists):
-        self.configuracion_usuario['artistas']=artistas
-        self.configuracion_usuario['playlists']=playlists
+        self.recomendador.configuracion['artistas'] = artistas
+        self.recomendador.configuracion['playlists'] = playlists
     
-    def enviar_recomendador(self, estrategia):
-        # por defecto recomendar canciones
-        generador = Generador(self.catalogo,estrategia)
-        # luego ya depende de lo que haya pedido el usuario
-        if self.configuracion_usuario['artistas']:
-            generador = DecoradorArtistas(generador)
-        elif self.configuracion_usuario['playlists']:
-            generador = DecoradorPlayList(generador)
-        return generador
+    def enviar_escucha(self, id, date):
+        self.recomendador.recibir_escucha(id, date)
+        return (id, date)
+    
+    def cambiar_estrategia(self, estrategia):
+        self.recomendador.configuracion['estrategia'] = estrategia
+    
+    def solicitar_recomendacion(self):
+        recomendaciones = self.recomendador.recomendar()
+
+        print('La canción recomendada es', recomendaciones['cancion'].get_titulo())
+
+        if self.recomendador.configuracion['artistas']:
+            print('El artista recomendado es', recomendaciones['artista'].get_nombre())
+
+        if self.recomendador.configuracion['playlists']:
+            print('La playlist recomendada es', recomendaciones['playlist'].get_titulo())
+
             
 
 
 
 if __name__ == '__main__':
+    '''
     cancion1 = Cancion(1,'Hola','2026-23-4', {'ritmo':0.1}, {'felicidad':0.8})
     cancion2 = Cancion(2,'Adios','2026-23-2', {'ritmo':0.8}, {'felicidad':0.2})
     cancion3 = Cancion(3,'Buenas','2026-23-1', {'ritmo':0.32}, {'felicidad':0.23})
@@ -471,13 +523,52 @@ if __name__ == '__main__':
 
     print("Estadísticos actuales de la sesión:")
     print(recomendador.sesion.estadisticos)
-
+    '''
     
 
+    if __name__ == "__main__":
 
+    # Crear canciones
+        c1 = Cancion(1, "A", 2020,{"ritmo": 5, "tono": 6}, {"energia": 7, "felicidad": 6})
 
+        c2 = Cancion(2, "B", 2021,
+                    {"ritmo": 6, "tono": 5},
+                    {"energia": 6, "felicidad": 7})
 
-        
+        c3 = Cancion(3, "C", 2022,
+                    {"ritmo": 2, "tono": 3},
+                    {"energia": 2, "felicidad": 3})
+
+        # Crear catálogo
+        catalogo = CatalogoStreaming()
+        catalogo.anyadir_cancion(c1)
+        catalogo.anyadir_cancion(c2)
+        catalogo.anyadir_cancion(c3)
+
+        # Crear artista
+        artista = Artista("Artista1", 2022, [c1, c2])
+        catalogo.anyadir_artista(artista)
+
+        # Crear playlist
+        playlist = Playlist("Mix1", 2023, [c1, c2])
+        catalogo.anyadir_playlist(playlist)
+
+        # Crear plataforma
+        plataforma = PlataformaStreaming(catalogo)
+
+        # Configuración
+        plataforma.establecer_configuracion(artistas=True, playlists=False)
+
+        # Simular escuchas
+        plataforma.enviar_escucha(1, "2025-01-01")
+        plataforma.enviar_escucha(2, "2025-01-02")
+
+        # Pedir recomendación
+        plataforma.solicitar_recomendacion()
+
+       
+
+            
 
     
 
