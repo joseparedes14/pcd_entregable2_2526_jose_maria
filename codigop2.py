@@ -10,9 +10,20 @@ import random
 class SingletonException(Exception):
     pass
 
+class IdInexistente(Exception): # el id de la cancion no está en el catalogo
+    pass
 
+class SesionVacia(Exception): # la sesión de escucha no tiene canciones, por lo que no se pueden calcular los estadísticos al dividir entre n
+	pass
 
+class AtributosIncompatibles(Exception): #las claves de los atirbutos de la entidad no coinciden con los estadisticos
+    pass
 
+class RecomendacionNoEncontrada(Exception): #para porque no hay niguna que supera el umbral
+    pass
+
+class ElementoDuplicado(Exception): # cuando el id ya es´ta en el catálogo
+    pass
 
 # CLASES ABSTRACTAS
 from abc import ABCMeta, abstractmethod
@@ -40,16 +51,18 @@ class RecomendadorStrategy(metaclass=ABCMeta):
         match.
         '''
         contador = 0
-
-        for key in estadisticos['atributos_son'].keys():
-            if np.abs(estadisticos['atributos_son'][key]['media'] - entidad.atributos_son[key]) < 1:
-                contador += 1
-        
-        for key in estadisticos['atributos_sent'].keys():
-            if np.abs(estadisticos['atributos_sent'][key]['media'] - entidad.atributos_sent[key]) < 1:
-                contador += 1
-        
-        return (contador > 3)
+        try:
+            for key in estadisticos['atributos_son'].keys():
+                if key not in entidad.atributos_son:
+                    raise AtributosIncompatibles(f"Falta el atributo {key} en la entidad")
+                if np.abs(estadisticos['atributos_son'][key]['media'] - entidad.atributos_son[key]) < 1:
+                    contador += 1
+                for key in estadisticos['atributos_sent'].keys():
+                    if np.abs(estadisticos['atributos_sent'][key]['media'] - entidad.atributos_sent[key]) < 1:
+                        contador += 1
+            return (contador > 3)
+        except KeyError as e:
+            raise AtributosIncompatibles('Los estaditicos no son compatibles')
      
 # DEFINICIÓN DE LAS ESTRATEGIAS
 
@@ -60,6 +73,14 @@ class StrategyAlfabetica(RecomendadorStrategy):
     '''
 
     def aplicarAlgoritmo(self, estadisticos, catalogo):
+        '''
+        Efecto: Método que ordena el catálogo alfabéticamente y luego recorre el catálogo ordenado buscando la primera coincidencia con los estadísticos de la sesión.
+        Diferenciamos entre el caso de que el catálogo sea de artistas o de canciones/playlist, ya que en el primer caso se ordena por el atributo "nombre" y en el segundo por el atributo "título".
+        Devuelve la primera coincidencia que encuentra o None si no encuentra ninguna.
+        '''
+        
+        if not catalogo:
+            return None
 
         if isinstance(catalogo[0], Artista): # Solo en el caso de que sea Artista entonces x debe acceder a atributo "nombre" y no "título"
 
@@ -89,6 +110,11 @@ class StrategyTemporal(RecomendadorStrategy):
     más recientes en el tiempo. OPERACIONES: aplicarAlgoritmo())
     '''
     def aplicarAlgoritmo(self,estadisticos, catalogo):
+        '''
+        Efecto: Método que ordena el catálogo por fecha de forma descendente y luego recorre el catálogo ordenado buscando la primera coincidencia con los estadísticos de la sesión.
+        Esto hace que se prioricen los elementos más recientes en el tiempo. Devuelve la primera coincidencia que encuentra o None si no encuentra ninguna.
+        '''
+        
         ordenadas_temporalmente = sorted(catalogo, key=lambda x: x.fecha, reverse=True)
         for i in ordenadas_temporalmente:
             if self.match(estadisticos,i):
@@ -102,6 +128,12 @@ class StrategyAleatoria(RecomendadorStrategy):
     del catálogo hasta encontrar un acierto. OPERACIONES: aplicarAlgoritmo())
     '''
     def aplicarAlgoritmo(self,estadisticos,catalogo):
+        '''
+        Efecto: Método que selecciona elementos al azar del catálogo hasta encontrar un acierto. Para evitar un bucle infinito, se crea una copia del
+        catalogo original y se van eliminando los elementos que ya se han seleccionado. De esta forma, si se encuentra un acierto, se devuelve el elemento coincidente, 
+        y si se han seleccionado todos los elementos del catálogo sin encontrar ningún acierto, el método devuelve None.
+        '''
+        
         disponibles = list(catalogo)
         while disponibles:
             elegido = random.choice(disponibles)
@@ -123,6 +155,10 @@ class CalculadorEstadistico(metaclass=ABCMeta):
     @abstractmethod
 
     def manejar_sesion(self):
+        '''
+        Efecto: Método abstracto que procesa los estadísticos de la sesión. Cada clase concreta de esta cadena implementará este método para calcular
+        la media o desviación y luego pasará el resultado al siguiente eslabón de la cadena si existe. 
+        '''
         pass
 
 
@@ -137,6 +173,16 @@ class CalculadorMedia(CalculadorEstadistico):
     '''
 
     def manejar_sesion(self, sesion, estadisticos = None):
+        '''
+        Efecto: Méotodo que calcula la media de los atributos sonoros y sentimentales de las canciones en la cola de la sesión. Para cada atributo, se recorre la cola de 
+        la sesión y se suma el valor del atributo en cada canción, para luego dividirlo entre el número de canciones en la sesión. El resultado se almacena en un diccionario 
+        con la siguiente estructura: {atributos_son: {atributo1: {'media': valor}, atributo2: {'media': valor}, ...}, atributos_sent: {atributo1: {'media': valor}, atributo2: {'media': valor}, ...}}.
+        Si no hay estadisicos de la sesión, se devuelve un diccionario vacío.
+        '''
+        
+        if len(sesion)==0:
+            raise SesionVacia('No se puede calcular la media. La sesión no tiene canciones')
+
         if estadisticos is None:
             estadisticos = {'atributos_son': {}, 'atributos_sent': {}}
         
@@ -160,10 +206,20 @@ class CalculadorDesviacion(CalculadorEstadistico):
     '''
 
     def manejar_sesion(self, sesion, estadisticos = None):
+        '''
+        Efecto: Método que calcula la desviación típica de los atributos de la sesión. Para cada atributo, se recorre la cola de la sesión y se suma el cuadrado de la diferencia 
+        entre el valor del atributo en cada canción y la media del atributo, para luego dividirlo entre el número de canciones en la sesión y sacar la raíz cuadrada. 
+        El resultado se almacena en el mismo diccionario que el calculador de media, añadiendo una nueva clave "std" a cada atributo con el valor de la desviación típica. 
+        Si no hay estadisicos de la sesión, se devuelve un diccionario vacío.
+        '''
+        
         if estadisticos is None:
             estadisticos = {'atributos_son': {}, 'atributos_sent': {}}
         
         n = len(sesion)
+        if n == 0:
+            raise SesionVacia('No se puede calcular la desviación típica. La sesión no tiene canciones')
+        
 
         for i in sesion[0].atributos_son.keys():
             
@@ -209,8 +265,11 @@ class SesionEscucha:
     
 
     def anyadir_cancion(self, cancion):
+        '''
+        Efecto: Método que añade una canción a la cola de la sesión. Si la cola ya tiene 10 canciones, se elimina la canción más antigua.
+        '''
+        
         self.cola.append(cancion)
-
         self.estadisticos = CalculadorMedia(CalculadorDesviacion()).manejar_sesion(list(self.cola))
 
 class CatalogoStreaming:
@@ -225,17 +284,28 @@ class CatalogoStreaming:
         self.artistas = []
     
     def buscar(self,id_cancion):
-        # Cada usuario envía, por cada canción que escucha, una tupla (id, fecha_hora) con el identificador único de la canción de acuerdo con el catálogo de canciones y la fecha y hora exacta en la que escuchó dicha canción 
+        '''
+        Efecto: Método que busca una canción en el catalogo a partir de u id_cancion. Devuelve una lista con la canción encontrada.
+        '''        
         res = list(filter(lambda c: c.id == id_cancion, self.canciones))
         return res
     
     def anyadir_cancion(self, cancion):
+        '''
+        Efecto: Añadir una canción al catálogo
+        '''
         self.canciones.append(cancion)
         
     def anyadir_playlist(self, playlist):
+        '''
+        Efecto: Añadir una playlist al catálogo
+        '''
         self.playlists.append(playlist)
 
     def anyadir_artista(self, artista):
+        '''
+        Efecto: Añadir un artista al catálogo
+        '''
         self.artistas.append(artista)
               
 class Cancion:
@@ -252,17 +322,27 @@ class Cancion:
         self.atributos_sent = sentimentales
     
     def get_titulo(self):
-        # para las busquedas alfabeticas
+        '''
+        Efecto: Método que devuelve el título de la cancion.
+        '''
         return self.titulo
     
     def get_fecha(self):
-        # para busquedas temporales
+        '''
+        Efecto: Método que devuelve la fecha de la cancion
+        '''
         return self.fecha
 
     def get_atributos_sonoros(self):
+        '''
+        Efecto: Método que devuelve los atributos sonoros de la canción.
+        '''
         return {**self.atributos_son}
     
     def get_atributos_sentimentales(self):
+        '''
+        Efecto: Método que devuelve los atributos sentimentales de la canción.
+        '''
         return {**self.atributos_sent}
         
 
@@ -290,7 +370,9 @@ class Artista:
     def actualizar_media_atributos(self):
         # para calcular la media de los sonores y sentimentales de todas las canciones del artista
         n = len(self.canciones)
-        # aqui metemos un error de que si n es 0
+        if n==0:
+            raise ValueError(f'No se puede calcular atributos para {self.nombre}: no tiene canciones')
+        
         media = lambda x: sum(x)/n
         
         # SONOROS
@@ -322,16 +404,27 @@ class Playlist:
         self.actualizar_media_atributos()
    
     def get_titulo(self):
-        # para las busquedas
+        '''
+        Efecto: Método que devuelve el título de la playlist.
+        '''
         return self.titulo
     
     def get_fecha(self):
+        '''
+        Efecto: Método que devuelve la fecha de la playlist.
+        '''
         return self.fecha
     
     def actualizar_media_atributos(self):
-        # para calcular la media de los sonores y sentimentales de todas las canciones del artista
+        '''
+        Efecto: Método que calcula la media de los atributos sonoros y sentimentales de todas las canciones de la playlist. Para cada atributo, 
+        se recorre la lista de canciones y se suma el valor del atributo en cada canción, para luego dividirlo entre el número de canciones en la playlist. 
+        El resultado se almacena en los diccionarios atributos_son y atributos_sent de la playlist.
+        '''
         n = len(self.canciones)
-        # aqui metemos un error de que si n es 0
+        if n==0:
+            raise ValueError(f'No se puede calcular atributos para {self.nombre}: no tiene canciones')
+        
         media = lambda x: sum(x)/n
         
         # SONOROS
@@ -367,6 +460,9 @@ class Recomendador:
     
     @classmethod
     def obtener_instancia(cls, estrategia, catalogo = None):
+        '''
+        Efecto: Método que devuelve la instancia única del Recomendador. Si no existe, la crea.
+        '''
         if cls._unicaInstancia is None:
             cls._unicaInstancia = cls(estrategia, catalogo)
         return cls._unicaInstancia
@@ -381,7 +477,7 @@ class Recomendador:
             self.sesion.anyadir_cancion(obj_cancion)
         else:
             #aqui meter un error.
-            print('La canción no existe en el catálogo')
+            raise IdInexistente('La canción no existe en el catálogo')
     
     def recomendar(self):
         decorador = RecomendacionCancion()
@@ -405,10 +501,12 @@ class Generador(metaclass=ABCMeta):
 	TAD Generador (DESCRIPCION: Clase abstracta que define la interfaz base para cualquier generador.
 	No puede ser instanciada directamente)
 	'''  
-    
         
     @abstractmethod
     def generar_recomendacion(self):
+        '''
+        Efecto: Método que genera una recomendación utilizando la estrategia de búsqueda proporcionada.
+        '''
         pass
 
 
@@ -419,7 +517,7 @@ class DecoradorRecomendacion(Generador):
     recomendar una canción. VALORES: generador(objeto))
     '''
 
-    def __init__(self, generador):
+    def __init__(self, generador : Generador):
         self.generador = generador
 
 
@@ -430,7 +528,8 @@ class DecoradorRecomendacion(Generador):
 
 
 class RecomendacionCancion(Generador):
-
+    def __init__(self, cancion : Cancion):
+        self.cancion = cancion
 
     def generar_recomendacion(self, catalogo, estadisticos, estrategia, recomendaciones = None):
         if recomendaciones is None:
@@ -438,7 +537,6 @@ class RecomendacionCancion(Generador):
         cancion = estrategia.aplicarAlgoritmo(estadisticos, catalogo.canciones) # Tener en cuenta lo de playlist/listas
         recomendaciones['cancion'] = cancion
         return recomendaciones
-
 
 
         
@@ -485,6 +583,10 @@ class PlataformaStreaming:
     
     def solicitar_recomendacion(self):
         recomendaciones = self.recomendador.recomendar()
+        
+        if recomendaciones.get('cancion') is None:
+            raise RecomendacionNoEncontrada('No se ha encontrado canción para recomendar')
+            
 
         print('La canción recomendada es', recomendaciones['cancion'].get_titulo())
 
