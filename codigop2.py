@@ -102,6 +102,21 @@ class StrategyAlfabetica(RecomendadorStrategy):
                     return entidad
                 
         return None
+    
+
+    async def _buscar(self, estadisticos, catalogo):
+        if not catalogo:
+            return None
+        if isinstance(catalogo[0], Artista):
+            ordenado = sorted(catalogo, key=lambda x: x.nombre)
+        else:
+            ordenado = sorted(catalogo, key=lambda x: x.titulo)
+        for entidad in ordenado:
+            
+            if self.match(estadisticos, entidad):
+                return entidad
+            await asyncio.sleep(0.1)
+        return None
 
 
         
@@ -120,6 +135,14 @@ class StrategyTemporal(RecomendadorStrategy):
         for i in ordenadas_temporalmente:
             if self.match(estadisticos,i):
                 return i
+        return None
+    
+    async def _buscar(self, estadisticos, catalogo):
+        ordenadas = sorted(catalogo, key=lambda x: x.fecha, reverse=True)
+        for entidad in ordenadas:
+            if self.match(estadisticos, entidad):
+                return entidad
+            await asyncio.sleep(0.1)
         return None
     
 
@@ -142,6 +165,58 @@ class StrategyAleatoria(RecomendadorStrategy):
                 return elegido
             disponibles.remove(elegido)
         return None
+    
+    async def _buscar(self, estadisticos, catalogo):
+        disponibles = list(catalogo)
+        while disponibles:
+            elegido = random.choice(disponibles)
+            if self.match(estadisticos, elegido):
+                return elegido
+            disponibles.remove(elegido)
+            await asyncio.sleep(0.1)
+        return None
+
+class StrategyCompuesta(RecomendadorStrategy):
+    '''
+    TAD StrategyCompuesta (DESCRIPCIÓN: Estrategia que lanza los tres algoritmos concurrentemente
+    con asyncio.gather y devuelve el resultado con mejor puntuación de match.
+    OPERACIONES: aplicarAlgoritmo())
+    '''
+
+    def aplicarAlgoritmo(self, estadisticos, catalogo):
+        '''
+        Efecto: Lanza las tres estrategias concurrentemente, recoge todos los resultados
+        no nulos y devuelve el que mayor puntuación de match acumule.
+        '''
+        return asyncio.run(self._buscar_concurrente(estadisticos, catalogo))
+
+    async def _buscar_concurrente(self, estadisticos, catalogo):
+        resultados = await asyncio.gather(
+            StrategyAlfabetica()._buscar(estadisticos, catalogo),
+            StrategyTemporal()._buscar(estadisticos, catalogo),
+            StrategyAleatoria()._buscar(estadisticos, catalogo),
+        )
+        candidatos = [r for r in resultados if r is not None]
+        if not candidatos:
+            return None
+        return max(candidatos, key=lambda entidad: self._puntuacion(estadisticos, entidad))
+
+    def _puntuacion(self, estadisticos, entidad):
+        '''
+        Efecto: Calcula la puntuación de match de una entidad con los estadísticos.
+        Cuanto menor sea la distancia entre la media y el valor del atributo,
+        mayor será la puntuación.
+        '''
+        puntuacion = 0
+        for key in estadisticos['atributos_son'].keys():
+            if key in entidad.atributos_son:
+                puntuacion += 1 / (1 + np.abs(estadisticos['atributos_son'][key]['media'] - entidad.atributos_son[key]))
+        for key in estadisticos['atributos_sent'].keys():
+            if key in entidad.atributos_sent:
+                puntuacion += 1 / (1 + np.abs(estadisticos['atributos_sent'][key]['media'] - entidad.atributos_sent[key]))
+        return puntuacion
+    
+
 
 # CHAIN OF RESPONSABILITY
 class CalculadorEstadistico(metaclass=ABCMeta):
@@ -595,7 +670,7 @@ class DecoradorArtistas(DecoradorRecomendacion):
 class PlataformaStreaming:
     
     def __init__(self, catalogo):
-        estrategia_predet = StrategyAleatoria()
+        estrategia_predet = StrategyCompuesta()
         self.recomendador = Recomendador.obtener_instancia(estrategia_predet, catalogo)
     
     def establecer_configuracion(self, artistas, playlists):
@@ -687,7 +762,7 @@ if __name__ == '__main__':
         plataforma = PlataformaStreaming(catalogo)
 
         # Configuración
-        plataforma.establecer_configuracion(artistas=True, playlists=False)
+        plataforma.establecer_configuracion(artistas=True, playlists=True)
 
         # Simular escuchas
         plataforma.enviar_escucha(1, "2025-01-01")
