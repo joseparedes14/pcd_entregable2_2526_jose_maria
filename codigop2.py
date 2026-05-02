@@ -3,6 +3,7 @@ import functools
 import numpy as np
 from collections import deque # Para la cola de la sesión de escuchase 
 import random
+import asyncio
 
 
 # Errores
@@ -172,7 +173,7 @@ class CalculadorMedia(CalculadorEstadistico):
     de las canciones en la cola e la sesión. Si hay un manejador siguiente, le pasa el diccionario resultante. OPERACIONES: manejar_sesion())
     '''
 
-    def manejar_sesion(self, sesion, estadisticos = None):
+    async def manejar_sesion(self, sesion, estadisticos = None):
         '''
         Efecto: Méotodo que calcula la media de los atributos sonoros y sentimentales de las canciones en la cola de la sesión. Para cada atributo, se recorre la cola de 
         la sesión y se suma el valor del atributo en cada canción, para luego dividirlo entre el número de canciones en la sesión. El resultado se almacena en un diccionario 
@@ -186,17 +187,39 @@ class CalculadorMedia(CalculadorEstadistico):
         if estadisticos is None:
             estadisticos = {'atributos_son': {}, 'atributos_sent': {}}
         
-        for i in sesion[0].atributos_son.keys():
-            estadisticos['atributos_son'][i] =  {'media': functools.reduce(lambda total, x: total + x.atributos_son[i], sesion, 0) / len(sesion)}
         
-        for i in sesion[0].atributos_sent.keys():
-            estadisticos['atributos_sent'][i] =  {'media': functools.reduce(lambda total, x: total + x.atributos_sent[i], sesion, 0) / len(sesion)}
+        
+        son, sent = await asyncio.gather(self._calcular_media_son(sesion), self._calcular_media_sent(sesion),)
+
+
+        estadisticos['atributos_son'] = son
+        estadisticos['atributos_sent'] = sent
     
 
         if self.manejador is not None:
-            return self.manejador.manejar_sesion(sesion, estadisticos)
+            return await self.manejador.manejar_sesion(sesion, estadisticos)
         
         return estadisticos
+    
+    async def _calcular_media_son(self, sesion):
+        son = {}
+        
+        for i in sesion[0].atributos_son.keys():
+            await asyncio.sleep(0.1)
+            son[i] =  {'media': functools.reduce(lambda total, x: total + x.atributos_son[i], sesion, 0) / len(sesion)}
+        
+        return son
+
+    async def _calcular_media_sent(self, sesion):
+        sent = {}
+
+        for i in sesion[0].atributos_sent.keys():
+            await asyncio.sleep(0.1)
+            sent[i] =  {'media': functools.reduce(lambda total, x: total + x.atributos_sent[i], sesion, 0) / len(sesion)}
+        
+        return sent
+
+        
         
 
 class CalculadorDesviacion(CalculadorEstadistico):
@@ -205,49 +228,55 @@ class CalculadorDesviacion(CalculadorEstadistico):
     OPERACIONES: manejar_sesion())
     '''
 
-    def manejar_sesion(self, sesion, estadisticos = None):
+    async def manejar_sesion(self, sesion, estadisticos = None):
         '''
         Efecto: Método que calcula la desviación típica de los atributos de la sesión. Para cada atributo, se recorre la cola de la sesión y se suma el cuadrado de la diferencia 
         entre el valor del atributo en cada canción y la media del atributo, para luego dividirlo entre el número de canciones en la sesión y sacar la raíz cuadrada. 
         El resultado se almacena en el mismo diccionario que el calculador de media, añadiendo una nueva clave "std" a cada atributo con el valor de la desviación típica. 
         Si no hay estadisicos de la sesión, se devuelve un diccionario vacío.
         '''
-        
+    
         if estadisticos is None:
             estadisticos = {'atributos_son': {}, 'atributos_sent': {}}
         
         n = len(sesion)
         if n == 0:
             raise SesionVacia('No se puede calcular la desviación típica. La sesión no tiene canciones')
-        
 
-        for i in sesion[0].atributos_son.keys():
-            
-            media = estadisticos['atributos_son'].setdefault(i, {}).get('media')
+        son, sent = await asyncio.gather(
+            self._calcular_std_son(sesion, estadisticos, n),
+            self._calcular_std_sent(sesion, estadisticos, n),
+        )
 
-            if media is None:
-                media = sum(x.atributos_son[i] for x in sesion) / len(sesion)
-
-            suma_cuadrados = functools.reduce(lambda total, x: total + (x.atributos_son[i] - media) ** 2, sesion,0)
-
-            estadisticos['atributos_son'][i]['std'] = np.sqrt(suma_cuadrados / n)
-
-        
-        for i in sesion[0].atributos_sent.keys():
-            
-            media = estadisticos['atributos_sent'].setdefault(i, {}).get('media')
-
-            if media is None:
-                media = sum(x.atributos_sent[i] for x in sesion) / len(sesion)
-
-            suma_cuadrados = functools.reduce(lambda total, x: total + (x.atributos_sent[i] - media) ** 2, sesion,0)
-
-            estadisticos['atributos_sent'][i]['std'] = np.sqrt(suma_cuadrados / n)
+        estadisticos['atributos_son'] = son
+        estadisticos['atributos_sent'] = sent
 
         if self.manejador is not None:
-            return self.manejador.manejar_sesion(sesion, estadisticos)
+            return await self.manejador.manejar_sesion(sesion, estadisticos)
         
         return estadisticos
+
+    async def _calcular_std_son(self, sesion, estadisticos, n):
+        son = dict(estadisticos['atributos_son'])
+        for i in sesion[0].atributos_son.keys():
+            await asyncio.sleep(0.1)
+            media = son.setdefault(i, {}).get('media')
+            if media is None:
+                media = sum(x.atributos_son[i] for x in sesion) / n
+            suma_cuadrados = functools.reduce(lambda total, x: total + (x.atributos_son[i] - media) ** 2, sesion, 0)
+            son[i]['std'] = np.sqrt(suma_cuadrados / n)
+        return son
+
+    async def _calcular_std_sent(self, sesion, estadisticos, n):
+        sent = dict(estadisticos['atributos_sent'])
+        for i in sesion[0].atributos_sent.keys():
+            await asyncio.sleep(0.1)
+            media = sent.setdefault(i, {}).get('media')
+            if media is None:
+                media = sum(x.atributos_sent[i] for x in sesion) / n
+            suma_cuadrados = functools.reduce(lambda total, x: total + (x.atributos_sent[i] - media) ** 2, sesion, 0)
+            sent[i]['std'] = np.sqrt(suma_cuadrados / n)
+        return sent
 
 
 
@@ -270,7 +299,7 @@ class SesionEscucha:
         '''
         
         self.cola.append(cancion)
-        self.estadisticos = CalculadorMedia(CalculadorDesviacion()).manejar_sesion(list(self.cola))
+        self.estadisticos = asyncio.run(CalculadorMedia(CalculadorDesviacion()).manejar_sesion(list(self.cola)))
 
 class CatalogoStreaming:
     '''
@@ -528,8 +557,7 @@ class DecoradorRecomendacion(Generador):
 
 
 class RecomendacionCancion(Generador):
-    def __init__(self, cancion : Cancion):
-        self.cancion = cancion
+
 
     def generar_recomendacion(self, catalogo, estadisticos, estrategia, recomendaciones = None):
         if recomendaciones is None:
