@@ -26,6 +26,8 @@ class RecomendacionNoEncontrada(Exception): #para porque no hay niguna que super
 class ElementoDuplicado(Exception): # cuando el id ya es´ta en el catálogo
     pass
 
+
+
 # CLASES ABSTRACTAS
 from abc import ABCMeta, abstractmethod
 
@@ -58,9 +60,9 @@ class RecomendadorStrategy(metaclass=ABCMeta):
                     raise AtributosIncompatibles(f"Falta el atributo {key} en la entidad")
                 if np.abs(estadisticos['atributos_son'][key]['media'] - entidad.atributos_son[key]) < 1:
                     contador += 1
-                for key in estadisticos['atributos_sent'].keys():
-                    if np.abs(estadisticos['atributos_sent'][key]['media'] - entidad.atributos_sent[key]) < 1:
-                        contador += 1
+            for key in estadisticos['atributos_sent'].keys():
+                if np.abs(estadisticos['atributos_sent'][key]['media'] - entidad.atributos_sent[key]) < 1:
+                    contador += 1
             return (contador > 3)
         except KeyError as e:
             raise AtributosIncompatibles('Los estaditicos no son compatibles')
@@ -527,7 +529,7 @@ class Playlist:
         '''
         n = len(self.canciones)
         if n==0:
-            raise ValueError(f'No se puede calcular atributos para {self.nombre}: no tiene canciones')
+            raise ValueError(f'No se puede calcular atributos para {self.titulo}: no tiene canciones')
         
         media = lambda x: sum(x)/n
         
