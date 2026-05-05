@@ -4,7 +4,8 @@ import numpy as np
 from collections import deque # Para la cola de la sesión de escuchase 
 import random
 import asyncio
-
+from kafka import KafkaProducer, KafkaConsumer
+import json
 
 # Errores
 
@@ -25,6 +26,38 @@ class RecomendacionNoEncontrada(Exception): #para porque no hay niguna que super
 
 class ElementoDuplicado(Exception): # cuando el id ya es´ta en el catálogo
     pass
+
+
+# Kafka
+class Producer:
+    def __init__(self, topic):
+        self.topic = topic
+        self.producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda x: json.dumps(x).encode('utf-8'))
+    
+    def start_escucha(self,id_cancion, fecha):
+        dict_data = {"id": id_cancion, "fecha": fecha}
+        self.producer.send(self.topic, value=dict_data)
+        self.producer.flush()
+
+class Consumer:
+    def __init__(self,topic, recomendador):
+        self._consumer = KafkaConsumer(topic, bootstrap_servers='localhost:9092', value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+        group_id = 'pcd_group', consumer_timeout_ms=2000)
+        self.rec = recomendador
+    
+    def escuchar_mensajes(self):
+        print("[Kafka] Buscando mensajes en el servidor...")
+        leidos = 0
+        for mensaje in self._consumer:
+            data = mensaje.value
+            id_cancion = data['id']
+            fecha = data['fecha']
+            print(f'[Kafka] Mensaje recibido: id_cancion={id_cancion}, fecha={fecha}')
+            self.rec.recibir_escucha(id_cancion, fecha)       
+            leidos += 1                       
+
+
+
 
 
 
@@ -751,7 +784,7 @@ if __name__ == '__main__':
         catalogo.anyadir_cancion(c1)
         catalogo.anyadir_cancion(c2)
         catalogo.anyadir_cancion(c3)
-
+        
         # Crear artista
         artista = Artista("Artista1", 2022, [c1, c2])
         catalogo.anyadir_artista(artista)
@@ -759,26 +792,35 @@ if __name__ == '__main__':
         # Crear playlist
         playlist = Playlist("Mix1", 2023, [c1, c2])
         catalogo.anyadir_playlist(playlist)
-
+        
+        
+        recomendador = Recomendador.obtener_instancia(StrategyCompuesta(), catalogo)
         # Crear plataforma
         plataforma = PlataformaStreaming(catalogo)
 
         # Configuración
         plataforma.establecer_configuracion(artistas=True, playlists=True)
 
+        print('[Kafka] Iniciando simulacion de Stream con Kafka')
+        topic_name = 'escuchas_pcd'
+        try: 
+            productor = Producer(topic_name)
+            productor.start_escucha(1, "2025-01-01")
+            productor.start_escucha(2, "2025-01-02")
+            print('[Kafka] Mensajes enviados:')
+            consumidor = Consumer(topic_name, recomendador)
+            consumidor.escuchar_mensajes()
+            print(f'\nCanciones en sesión tras Kafka: {len(recomendador.sesion.cola)}')
+            plataforma.solicitar_recomendacion()
+        
+        except Exception as e:
+            print(f'[Kafka] Simulación Kafka omitida: Requiere servidor activo en localhost:9092 Error: {e}')
+
+    
         # Simular escuchas
+        print('Ejecución del flujo normal')
         plataforma.enviar_escucha(1, "2025-01-01")
         plataforma.enviar_escucha(2, "2025-01-02")
 
         # Pedir recomendación
         plataforma.solicitar_recomendacion()
-
-       
-
-            
-
-    
-
-        
-    
-    
