@@ -809,6 +809,7 @@ if __name__ == '__main__':
             productor.start_escucha(2, "2025-01-02")
             print('[Kafka] Mensajes enviados:')
             consumidor = Consumer(topic_name, recomendador)
+        
             consumidor.escuchar_mensajes()
             print(f'\nCanciones en sesión tras Kafka: {len(recomendador.sesion.cola)}')
             plataforma.solicitar_recomendacion()
