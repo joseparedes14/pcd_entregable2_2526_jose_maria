@@ -114,7 +114,8 @@ def test_catalogo_streaming():
     cat = Streaming.CatalogoStreaming()
     c = Streaming.Cancion(99, 'Test', 2026, {}, {})
     cat.anyadir_cancion(c)
-    assert cat.buscar(99).titulo == 'Test'
+    resultado = cat.buscar(99)
+    assert resultado[0].titulo == 'Test'
 
 
 # ---- Test para la sesion de escucha ----
@@ -126,7 +127,7 @@ def test_sesion_escucha():
     c2 = Streaming.Cancion(2, 'S2', 2026, {'ritmo': 50}, {'energia': 50})
     sesion.anyadir_cancion(c1)
     sesion.anyadir_cancion(c2)
-    assert len(sesion.canciones) == 2
+    assert len(sesion.cola) == 2
 
 # --- Test plataforma streaming --- 
 def test_plataforma_streaming():
@@ -134,8 +135,8 @@ def test_plataforma_streaming():
     catalogo = Streaming.CatalogoStreaming()
     plataforma = Streaming.PlataformaStreaming(catalogo)
     plataforma.establecer_configuracion(artistas=True, playlists=True)
-    assert plataforma.configuracion['artistas'] == True
-    assert plataforma.configuracion['playlists'] == True
+    assert plataforma.recomendador.configuracion['artistas'] == True
+    assert plataforma.recomendador.configuracion['playlists'] == True
 
 # ----- Test para RecomendacionCancion ------
 
@@ -143,24 +144,26 @@ def test_recomendacioncancion():
     # Probamos si la salida tiene el formato esperado y si lo que hay dentro es un objeto cancion : {'cancion': obj_cancion}
     generador = Streaming.RecomendacionCancion()
     catalogo = Streaming.CatalogoStreaming()
-    c1 = Streaming.Cancion(1, 'S1', 2026, {'ritmo': 100}, {'energia': 100})
+    c1 = Streaming.Cancion(1, 'S1', 2026, {'ritmo':7,'tono':8}, {'energia':4, 'felicidad':2})
     catalogo.anyadir_cancion(c1)
     estrategia = Streaming.StrategyTemporal()
-    resultado = generador.generar_recomendacion(catalogo,{},estrategia)
+    estadisticos = {'atributos_son': {'ritmo': {'media': 7}, 'tono': {'media': 8}}, 
+                    'atributos_sent': {'energia': {'media': 4}, 'felicidad': {'media': 2}}}
+    resultado = generador.generar_recomendacion(catalogo,estadisticos,estrategia)
     assert 'cancion' in resultado
     assert resultado['cancion'].titulo == 'S1'    
 
 def test_decoradorplaylist():
     # probamos si el diccionario devuelto tiene la clave playlist y cancion y el objeto guardado es realmente una playlist
     catalogo = Streaming.CatalogoStreaming()
-    c1 = Streaming.Cancion(1, 'S1', 2026, {'ritmo': 5}, {'energia': 5})
+    c1 = Streaming.Cancion(1, 'S1', 2026, {'ritmo': 5, 'tono': 5}, {'energia': 5, 'felicidad': 5})
     playlist_esperada = Streaming.Playlist("Mix 2026", 2026, [c1])
     catalogo.anyadir_playlist(playlist_esperada)
     base = Streaming.RecomendacionCancion()
     decorador = Streaming.DecoradorPlayList(base)
     estrategia = Streaming.StrategyAlfabetica()
-    estadisticos = {'atributos_son': {'ritmo': {'media': 5}},
-                    'atributos_sent': {'energia': {'media': 5}}}
+    estadisticos = {'atributos_son': {'ritmo': {'media': 5},'tono': {'media': 5},},
+                    'atributos_sent': {'energia': {'media': 5},'felicidad': {'media': 5}}}
     resultado = decorador.generar_recomendacion(catalogo,estadisticos,estrategia)
     assert 'cancion' in resultado
     assert 'playlist' in resultado
@@ -169,14 +172,14 @@ def test_decoradorplaylist():
 def test_decoradorartistas():
     # probamos si el diccionario devuelto tiene la clave artista y cancion y el objeto guardado es realmente un artista
     catalogo = Streaming.CatalogoStreaming()
-    c1 = Streaming.Cancion(1, 'S1', 2026, {'ritmo': 5}, {'energia': 5})
+    c1 = Streaming.Cancion(1, 'S1', 2026, {'ritmo': 5, 'tono': 5}, {'energia': 5, 'felicidad': 5})
     artista_esperada = Streaming.Artista("Maria", 2026, [c1])
     catalogo.anyadir_artista(artista_esperada)
     base = Streaming.RecomendacionCancion()
     decorador = Streaming.DecoradorArtistas(base)
     estrategia = Streaming.StrategyAlfabetica()
-    estadisticos = {'atributos_son': {'ritmo': {'media': 5}},
-                    'atributos_sent': {'energia': {'media': 5}}}
+    estadisticos = {'atributos_son': {'ritmo': {'media': 5},'tono': {'media': 5},},
+                    'atributos_sent': {'energia': {'media': 5},'felicidad': {'media': 5}}}
     resultado = decorador.generar_recomendacion(catalogo,estadisticos,estrategia)
     assert 'cancion' in resultado
     assert 'artista' in resultado
