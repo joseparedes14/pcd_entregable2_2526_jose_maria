@@ -4,8 +4,8 @@ import codigop2 as Streaming
 
 #------ Test para el patrón Strategy-------
 
-
 def test_strategy_alfabetica():
+    #debería devolver la canción con el título que va primero alfabéticamente
     estadisticos = {
         'atributos_son':{'ritmo': {'media':5}, 'tono':{'media':4}},
         'atributos_sent': {'energia': {'media': 6}, 'felicidad': {'media':5}}
@@ -14,10 +14,11 @@ def test_strategy_alfabetica():
     Cancion2 = Streaming.Cancion(2,'Prueba2',2026,{'ritmo':5.2,'tono':4.1}, {'energia':6.1, 'felicidad':4.9})
     estrategia = Streaming.StrategyAlfabetica()
     rdo = estrategia.aplicarAlgoritmo(estadisticos, [Cancion1, Cancion2])
-    assert rdo.titulo == 'Prueba1' #debería devolver la canción con el título que va primero alfabéticamente
+    assert rdo.titulo == 'Prueba1'
 
 
 def test_strategy_temporal():
+    # debería devolver la canción con la fecha más reciente
     estadisticos = {
         'atributos_son':{'ritmo': {'media':5}, 'tono':{'media':4}},
         'atributos_sent': {'energia': {'media': 6}, 'felicidad': {'media':5}}
@@ -26,7 +27,18 @@ def test_strategy_temporal():
     Cancion2 = Streaming.Cancion(2,'Prueba2',2026,{'ritmo':5.2,'tono':4.1}, {'energia':6.1, 'felicidad':4.9})
     estrategia = Streaming.StrategyTemporal()
     rdo = estrategia.aplicarAlgoritmo(estadisticos, [Cancion1, Cancion2])
-    assert rdo.fecha == 2026 #debería devolver la canción con la fecha más reciente
+    assert rdo.fecha == 2026 
+
+def test_strategy_aleatoria():
+    # deberia devolver la única que hay, pues como es random no podemos saber el resultado
+    estadisticos = {
+        'atributos_son':{'ritmo': {'media':5}, 'tono':{'media':4}},
+        'atributos_sent': {'energia': {'media': 6}, 'felicidad': {'media':5}}
+    }
+    Cancion1 = Streaming.Cancion(1,'Prueba1',2020,{'ritmo':5.2,'tono':4.1}, {'energia':6.1, 'felicidad':4.9})
+    estrategia = Streaming.StrategyAleatoria()
+    rdo = estrategia.aplicarAlgoritmo(estadisticos, [Cancion1])
+    assert rdo.fecha == 2020 
 
 
 @pytest.mark.asyncio
@@ -38,7 +50,6 @@ async def test_strategy_compuesta_sin_resultados():
 
 
 
-'''
 # ----- Test para la chain of responsability -----
 
 @pytest.mark.asyncio #esto es necesario para probar funcioones definidas con asyncio
@@ -67,18 +78,8 @@ async def test_calculadora_desviacion():
     assert res['atributos_son']['tono']['std'] == 1.5
     assert res['atributos_sent']['energia']['std'] == 1.0
     assert res['atributos_sent']['felicidad']['std'] == 1.5   
-    
-@pytest.mark.asyncio   
-async def test_error_sesion_vacia_calculadoras():
-    calculadora_media = Streaming.CalculadorMedia()
-    calculadora_std = Streaming.CalculadorDesviacion()
-    with pytest.raises(Streaming.SesionVacia):
-        await calculadora_media.manejar_sesion([])
-    
-    with pytest.raises(Streaming.SesionVacia):
-        await calculadora_std.manejar_sesion([])
-         
-'''
+
+
 # ------ Test para Artista y Playlist ------
 def test_artista_medias():
     Cancion1 = Streaming.Cancion(1,'Prueba1',2026,{'ritmo':5,'tono':5}, {'energia':6, 'felicidad':5})
@@ -117,6 +118,7 @@ def test_catalogo_streaming():
 
 
 # ---- Test para la sesion de escucha ----
+
 def test_sesion_escucha():
     # vamos a crear una sesion de escucha y ver si se añaden las canciones correctamente
     sesion = Streaming.SesionEscucha()
@@ -135,64 +137,52 @@ def test_plataforma_streaming():
     assert plataforma.configuracion['artistas'] == True
     assert plataforma.configuracion['playlists'] == True
 
+# ----- Test para RecomendacionCancion ------
 
-'''
-        
-def test_recibir_escucha():
-    #para ver si lanza el error de ID inexistente
-    Streaming.Recomendador._unicaInstancia = None
+def test_recomendacioncancion():
+    # Probamos si la salida tiene el formato esperado y si lo que hay dentro es un objeto cancion : {'cancion': obj_cancion}
+    generador = Streaming.RecomendacionCancion()
     catalogo = Streaming.CatalogoStreaming()
+    c1 = Streaming.Cancion(1, 'S1', 2026, {'ritmo': 100}, {'energia': 100})
+    catalogo.anyadir_cancion(c1)
     estrategia = Streaming.StrategyTemporal()
-    recomendador= Streaming.Recomendador.obtener_instancia(estrategia,catalogo)
-    with pytest.raises(Streaming.IdInexistente):
-        recomendador.recibir_escucha(1,13022005)
+    resultado = generador.generar_recomendacion(catalogo,{},estrategia)
+    assert 'cancion' in resultado
+    assert resultado['cancion'].titulo == 'S1'    
 
-
-def test_error_instanciacion_sin_metodo():
-    Streaming.Recomendador._unicaInstancia = None
-    estrategia = Streaming.StrategyAleatoria()
-    Streaming.Recomendador.obtener_instancia(estrategia) #esta va bien
-    with pytest.raises(Streaming.SingletonException):
-        Streaming.Recomendador(estrategia, None) #esto no se puede
-
-def test_error_recomendacion_no_encontrada():
-    #vamos a crear dos canciones distintas y pedir una recomendacion pero que no pase el match
-    # entonces no recomienda nada
-    Streaming.Recomendador._unicaInstancia = None
-    Cancion1 = Streaming.Cancion(1,'Pop',2026,{'ritmo':10}, {'felicidad':10})
+def test_decoradorplaylist():
+    # probamos si el diccionario devuelto tiene la clave playlist y cancion y el objeto guardado es realmente una playlist
     catalogo = Streaming.CatalogoStreaming()
-    catalogo.anyadir_cancion(Cancion1)
-    plataforma = Streaming.PlataformaStreaming(catalogo)
-    Cancion2 = Streaming.Cancion(2,'Ondas Alfa',2026,{'ritmo':0}, {'felicidad':0})
-    catalogo.anyadir_cancion(Cancion2)
-    plataforma.enviar_escucha(2,'2026-05-04')
-    with pytest.raises(Streaming.RecomendacionNoEncontrada):
-        plataforma.solicitar_recomendacion()
-
-# ---- Test decorador ----
-
-def test_todos_los_decoradores():
-    # vemos si mezclamos los 3 decoradores tenemos un diccionario con 3 claves
-    Streaming.Recomendador._unicaInstancia = None
-    Cancion1 = Streaming.Cancion(1,'Pop',2026,{'ritmo':10}, {'felicidad':10})
+    c1 = Streaming.Cancion(1, 'S1', 2026, {'ritmo': 5}, {'energia': 5})
+    playlist_esperada = Streaming.Playlist("Mix 2026", 2026, [c1])
+    catalogo.anyadir_playlist(playlist_esperada)
+    base = Streaming.RecomendacionCancion()
+    decorador = Streaming.DecoradorPlayList(base)
+    estrategia = Streaming.StrategyAlfabetica()
+    estadisticos = {'atributos_son': {'ritmo': {'media': 5}},
+                    'atributos_sent': {'energia': {'media': 5}}}
+    resultado = decorador.generar_recomendacion(catalogo,estadisticos,estrategia)
+    assert 'cancion' in resultado
+    assert 'playlist' in resultado
+    assert isinstance(resultado['playlist'], Streaming.Playlist) 
+    
+def test_decoradorartistas():
+    # probamos si el diccionario devuelto tiene la clave artista y cancion y el objeto guardado es realmente un artista
     catalogo = Streaming.CatalogoStreaming()
-    catalogo.anyadir_cancion(Cancion1)
-    catalogo.anyadir_artista(Streaming.Artista('Maria', 2026, [Cancion1]))
-    catalogo.anyadir_playlist(Streaming.Playlist('Playlist de Jose', 2026, [Cancion1]))
+    c1 = Streaming.Cancion(1, 'S1', 2026, {'ritmo': 5}, {'energia': 5})
+    artista_esperada = Streaming.Artista("Maria", 2026, [c1])
+    catalogo.anyadir_artista(artista_esperada)
+    base = Streaming.RecomendacionCancion()
+    decorador = Streaming.DecoradorArtistas(base)
+    estrategia = Streaming.StrategyAlfabetica()
+    estadisticos = {'atributos_son': {'ritmo': {'media': 5}},
+                    'atributos_sent': {'energia': {'media': 5}}}
+    resultado = decorador.generar_recomendacion(catalogo,estadisticos,estrategia)
+    assert 'cancion' in resultado
+    assert 'artista' in resultado
+    assert isinstance(resultado['artista'], Streaming.Artista) 
     
-    plataforma = Streaming.PlataformaStreaming(catalogo)
-    plataforma.establecer_configuracion(artistas=True, playlists=True)
-    plataforma.enviar_escucha(1,'2026-05-05')
-    rdo = plataforma.recomendador.recomendar()
-    
-    assert 'cancion' in rdo
-    assert 'artista' in rdo
-    assert 'playlist' in rdo
-    
-   
-    
-    
+
     
     
     
-'''
