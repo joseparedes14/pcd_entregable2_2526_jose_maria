@@ -7,6 +7,7 @@ import asyncio
 from kafka import KafkaProducer, KafkaConsumer
 import json
 
+
 # Errores
 
 class SingletonException(Exception):
@@ -735,93 +736,112 @@ class PlataformaStreaming:
             print('La playlist recomendada es', recomendaciones['playlist'].get_titulo())
 
             
+# PARA GENERACIÓN AUTOMÁTICA DE CATÁLOGo
+
+import random
 
 
+def poblar_catalogo(catalogo,
+                     n_canciones=50,
+                     n_artistas=10,
+                     n_playlists=10):
 
-if __name__ == '__main__':
-    '''
-    cancion1 = Cancion(1,'Hola','2026-23-4', {'ritmo':0.1}, {'felicidad':0.8})
-    cancion2 = Cancion(2,'Adios','2026-23-2', {'ritmo':0.8}, {'felicidad':0.2})
-    cancion3 = Cancion(3,'Buenas','2026-23-1', {'ritmo':0.32}, {'felicidad':0.23})
 
-    sesion = SesionEscucha()
-    sesion.anyadir_cancion(cancion1)
-    sesion.anyadir_cancion(cancion2)
-    sesion.anyadir_cancion(cancion3)
+    # CANCIONES
+    canciones_generadas = []
 
-    Calculador = CalculadorMedia(CalculadorDesviacion()).manejar_sesion(list(sesion.cola))
-    print(Calculador)
-    
-    recomendador = Recomendador.obtener_instancia()
-    c1 = Cancion(101, "Song A", "2023-10-01", {'ritmo': 120, 'tono': 1}, {'felicidad': 0.5})
-    c2 = Cancion(102, "Song B", "2023-10-02", {'ritmo': 130, 'tono': 2}, {'felicidad': 0.7})
+    for i in range(1, n_canciones + 1):
 
-    recomendador.catalogo.anyadir_cancion(c1)
-    recomendador.catalogo.anyadir_cancion(c2)
-    recomendador.recibir_escucha(101, "2023-10-25 14:00")
-    recomendador.recibir_escucha(102, "2023-10-25 14:05")
+        cancion = Cancion(
+            id=i,
+            titulo=f"Song_{i}",
+            fecha=random.randint(2018, 2026),
 
-    print("Estadísticos actuales de la sesión:")
-    print(recomendador.sesion.estadisticos)
-    '''
-    
+            sonoros={
+                "ritmo": random.randint(1, 3),
+                "tono": random.randint(1, 3)
+            },
 
-    if __name__ == "__main__":
+            sentimentales={
+                "energia": random.randint(1, 3),
+                "felicidad": random.randint(1, 3)
+            }
+        )
 
-    # Crear canciones
-        c1 = Cancion(1, "A", 2020,{"ritmo": 5, "tono": 6}, {"energia": 7, "felicidad": 6})
+        catalogo.anyadir_cancion(cancion)
+        canciones_generadas.append(cancion)
 
-        c2 = Cancion(2, "B", 2021,
-                    {"ritmo": 6, "tono": 5},
-                    {"energia": 6, "felicidad": 7})
+    # ARTISTAS
 
-        c3 = Cancion(3, "C", 2022,
-                    {"ritmo": 2, "tono": 3},
-                    {"energia": 2, "felicidad": 3})
+    for i in range(1, n_artistas + 1):
 
-        # Crear catálogo
-        catalogo = CatalogoStreaming()
-        catalogo.anyadir_cancion(c1)
-        catalogo.anyadir_cancion(c2)
-        catalogo.anyadir_cancion(c3)
-        
-        # Crear artista
-        artista = Artista("Artista1", 2022, [c1, c2])
+        canciones_artista = random.sample(
+            canciones_generadas,
+            random.randint(2, 6)
+        )
+
+        artista = Artista(
+            nombre=f"Artista_{i}",
+            fecha=random.randint(2018, 2026),
+            canciones=canciones_artista
+        )
+
         catalogo.anyadir_artista(artista)
 
-        # Crear playlist
-        playlist = Playlist("Mix1", 2023, [c1, c2])
+    # PLAYLISTS
+
+
+    for i in range(1, n_playlists + 1):
+
+        canciones_playlist = random.sample(
+            canciones_generadas,
+            random.randint(3, 10)
+        )
+
+        playlist = Playlist(
+            titulo=f"Playlist_{i}",
+            fecha=random.randint(2018, 2026),
+            canciones=canciones_playlist
+        )
+
         catalogo.anyadir_playlist(playlist)
+
+if __name__ == "__main__":
+
+# Crear canciones
+    catalogo = CatalogoStreaming()
+
+    poblar_catalogo(catalogo)
         
         
-        recomendador = Recomendador.obtener_instancia(StrategyCompuesta(), catalogo)
+    recomendador = Recomendador.obtener_instancia(StrategyCompuesta(), catalogo)
         # Crear plataforma
-        plataforma = PlataformaStreaming(catalogo)
+    plataforma = PlataformaStreaming(catalogo)
 
         # Configuración
-        plataforma.establecer_configuracion(artistas=True, playlists=True)
+    plataforma.establecer_configuracion(artistas=True, playlists=True)
 
-        print('[Kafka] Iniciando simulacion de Stream con Kafka')
-        topic_name = 'escuchas_pcd'
-        try: 
-            productor = Producer(topic_name)
-            productor.start_escucha(1, "2025-01-01")
-            productor.start_escucha(2, "2025-01-02")
-            print('[Kafka] Mensajes enviados:')
-            consumidor = Consumer(topic_name, recomendador)
+    print('[Kafka] Iniciando simulacion de Stream con Kafka')
+    topic_name = 'escuchas_pcd'
+    try: 
+        productor = Producer(topic_name)
+        productor.start_escucha(1, "2025-01-01")
+        productor.start_escucha(2, "2025-01-02")
+        print('[Kafka] Mensajes enviados:')
+        consumidor = Consumer(topic_name, recomendador)
         
-            consumidor.escuchar_mensajes()
-            print(f'\nCanciones en sesión tras Kafka: {len(recomendador.sesion.cola)}')
-            plataforma.solicitar_recomendacion()
+        consumidor.escuchar_mensajes()
+        print(f'\nCanciones en sesión tras Kafka: {len(recomendador.sesion.cola)}')
+        plataforma.solicitar_recomendacion()
         
-        except Exception as e:
-            print(f'[Kafka] Simulación Kafka omitida: Requiere servidor activo en localhost:9092 Error: {e}')
+    except Exception as e:
+        print(f'[Kafka] Simulación Kafka omitida: Requiere servidor activo en localhost:9092 Error: {e}')
 
     
         # Simular escuchas
-        print('Ejecución del flujo normal')
-        plataforma.enviar_escucha(1, "2025-01-01")
-        plataforma.enviar_escucha(2, "2025-01-02")
+    print('Ejecución del flujo normal')
+    plataforma.enviar_escucha(1, "2025-01-01")
+    plataforma.enviar_escucha(2, "2025-01-02")
 
-        # Pedir recomendación
-        plataforma.solicitar_recomendacion()
+    # Pedir recomendación
+    plataforma.solicitar_recomendacion()
