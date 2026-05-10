@@ -824,7 +824,7 @@ if __name__ == "__main__":
     plataforma = PlataformaStreaming(catalogo)
 
         # Configuración
-    plataforma.establecer_configuracion(artistas=True, playlists=False)
+    plataforma.establecer_configuracion(artistas=True, playlists=True)
 
     print('[Kafka] Iniciando simulacion de Stream con Kafka')
     topic_name = 'escuchas_pcd'
