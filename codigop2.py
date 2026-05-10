@@ -661,9 +661,9 @@ class DecoradorRecomendacion(Generador):
         self.generador = generador
 
 
-    @abstractmethod
-    def generar_recomendacion(self):
-        pass
+    
+    def generar_recomendacion(self, catalogo, estadisticos, estrategia, recomendaciones = None):
+        return self.generador.generar_recomendacion(catalogo, estadisticos, estrategia, recomendaciones)
 
 
 
@@ -684,23 +684,28 @@ class DecoradorPlayList(DecoradorRecomendacion):
     TAD DecoradorPlayList (DESCRIPCIÓN: Extensión que añade a recomendar una playlist a la recomendación base.
     OPERACIONES: generar_recomendacion, match_playlist.
     '''
+    def __init__(self, generador):
+        super().__init__(generador)
     def generar_recomendacion(self, catalogo, estadisticos, estrategia, recomendaciones = None):
-        if recomendaciones is None:
-            recomendaciones = {}
+        recomendaciones = super().generar_recomendacion(catalogo, estadisticos, estrategia, recomendaciones)
+
         playlist = estrategia.aplicarAlgoritmo(estadisticos, catalogo.playlists)
         recomendaciones['playlist'] = playlist
-        return self.generador.generar_recomendacion(catalogo, estadisticos, estrategia, recomendaciones)
+        return recomendaciones
     
 
 class DecoradorArtistas(DecoradorRecomendacion):
-    
+    def __init__(self, generador):
+        super().__init__(generador)
+
     def generar_recomendacion(self, catalogo, estadisticos, estrategia, recomendaciones = None):
-        if recomendaciones is None:
-            recomendaciones = {}
+        recomendaciones = super().generar_recomendacion(catalogo, estadisticos, estrategia, recomendaciones)
+
+       
 
         artista = estrategia.aplicarAlgoritmo(estadisticos, catalogo.artistas)
         recomendaciones['artista'] = artista
-        return self.generador.generar_recomendacion(catalogo, estadisticos, estrategia, recomendaciones)
+        return recomendaciones
 
 # CLASE CON LA QUE INTERACTÚA EL USUARIO
 class PlataformaStreaming:
@@ -819,7 +824,7 @@ if __name__ == "__main__":
     plataforma = PlataformaStreaming(catalogo)
 
         # Configuración
-    plataforma.establecer_configuracion(artistas=True, playlists=True)
+    plataforma.establecer_configuracion(artistas=True, playlists=False)
 
     print('[Kafka] Iniciando simulacion de Stream con Kafka')
     topic_name = 'escuchas_pcd'
