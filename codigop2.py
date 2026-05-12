@@ -8,24 +8,29 @@ from kafka import KafkaProducer, KafkaConsumer
 import json
 
 
-# Errores
+# Excepciones
 
 class SingletonException(Exception):
     pass
 
-class IdInexistente(Exception): # el id de la cancion no está en el catalogo
+class IdInexistente(Exception): 
+    # el id de la cancion no está en el catalogo
     pass
 
-class SesionVacia(Exception): # la sesión de escucha no tiene canciones, por lo que no se pueden calcular los estadísticos al dividir entre n
+class SesionVacia(Exception): 
+    # la sesión de escucha no tiene canciones, por lo que no se pueden calcular los estadísticos al dividir entre n
 	pass
 
-class AtributosIncompatibles(Exception): #las claves de los atirbutos de la entidad no coinciden con los estadisticos
+class AtributosIncompatibles(Exception): 
+    #las claves de los atirbutos de la entidad no coinciden con los estadisticos
     pass
 
-class RecomendacionNoEncontrada(Exception): #para porque no hay niguna que supera el umbral
+class RecomendacionNoEncontrada(Exception): 
+    #para porque no hay niguna que supera el umbral
     pass
 
-class ElementoDuplicado(Exception): # cuando el id ya es´ta en el catálogo
+class ElementoDuplicado(Exception): 
+    # cuando el id ya es´ta en el catálogo
     pass
 
 
@@ -56,8 +61,6 @@ class Consumer:
             print(f'[Kafka] Mensaje recibido: id_cancion={id_cancion}, fecha={fecha}')
             self.rec.recibir_escucha(id_cancion, fecha)       
             leidos += 1                       
-
-
 
 
 
@@ -193,7 +196,6 @@ class StrategyAleatoria(RecomendadorStrategy):
         catalogo original y se van eliminando los elementos que ya se han seleccionado. De esta forma, si se encuentra un acierto, se devuelve el elemento coincidente, 
         y si se han seleccionado todos los elementos del catálogo sin encontrar ningún acierto, el método devuelve None.
         '''
-        
         disponibles = list(catalogo)
         while disponibles:
             elegido = random.choice(disponibles)
@@ -297,7 +299,6 @@ class CalculadorMedia(CalculadorEstadistico):
 
         if estadisticos is None:
             estadisticos = {'atributos_son': {}, 'atributos_sent': {}}
-        
         
         
         son, sent = await asyncio.gather(self._calcular_media_son(sesion), self._calcular_media_sent(sesion),)
@@ -582,7 +583,6 @@ class Playlist:
         
 
 
-# EN STAND-BY
 class Recomendador:
     '''
     TAD Recomendador (DESCRIPCIÓN: Clase Singleton que coordina el sistema de recomendación.
@@ -631,9 +631,6 @@ class Recomendador:
             
 
 # DECORADOR
-
-
-  
 
 
 class Generador(metaclass=ABCMeta):
@@ -843,10 +840,14 @@ if __name__ == "__main__":
         print(f'[Kafka] Simulación Kafka omitida: Requiere servidor activo en localhost:9092 Error: {e}')
 
     
-        # Simular escuchas
+    # Simular escuchas
     print('Ejecución del flujo normal')
-    plataforma.enviar_escucha(1, "2025-01-01")
-    plataforma.enviar_escucha(2, "2025-01-02")
-
-    # Pedir recomendación
-    plataforma.solicitar_recomendacion()
+    try:
+        plataforma.enviar_escucha(1, "2025-01-01")
+        plataforma.enviar_escucha(2, "2025-01-02")
+        # Pedir recomendación
+        plataforma.solicitar_recomendacion()
+    except RecomendacionNoEncontrada as e:
+        print('f{e}. Intente escuchar más canciones para que podamos hacerle una recomendacion.')
+    except Exception as e:
+        print(e)
