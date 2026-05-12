@@ -816,7 +816,7 @@ if __name__ == "__main__":
     poblar_catalogo(catalogo)
         
         
-    recomendador = Recomendador.obtener_instancia(StrategyCompuesta(), catalogo)
+    recomendador = Recomendador.obtener_instancia(StrategyCom(), catalogo)
         # Crear plataforma
     plataforma = PlataformaStreaming(catalogo)
 

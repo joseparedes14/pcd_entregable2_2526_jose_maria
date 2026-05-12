@@ -1,0 +1,119 @@
+<diagram program="umletino" version="15.1"><zoom_level>10</zoom_level><help_text></help_text><element><id>UMLClass</id><coordinates><x>990</x><y>669</y><w>290</w><h>190</h></coordinates><panel_attributes>Recomendador
+--
+- configuracion: dict
+- _unicaInstancia: Recomendador
++ catalogo: Catalogo
++ sesion: SesionEscucha
+--
++obtener_instancia()
++recomendar()
++recibir_escucha(id, fecha)</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1560</x><y>949</y><w>230</w><h>120</h></coordinates><panel_attributes>&lt;&lt;abstract&gt;&gt;
+RecomendadorStrategy
+--
++aplicarAlgoritmo() &lt;&lt;abstract&gt;&gt;
++match(estadisticos: dict, entidad)</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1240</x><y>999</y><w>340</w><h>30</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;10;320;10</additional_attributes></element><element><id>UMLClass</id><coordinates><x>1380</x><y>1199</y><w>190</w><h>40</h></coordinates><panel_attributes>StrategyOrdenAlfabetico
+--
+- buscar(estadisticos, catalogo)</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1460</x><y>1059</y><w>230</w><h>160</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>210;10;210;100;10;140</additional_attributes></element><element><id>UMLClass</id><coordinates><x>1580</x><y>1209</y><w>190</w><h>40</h></coordinates><panel_attributes>StrategyOrdenTemporal
+--
+- buscar(estadisticos, catalogo)</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1800</x><y>1209</y><w>190</w><h>40</h></coordinates><panel_attributes>StrategyAleatoria
+--
+- buscar(estadisticos, catalogo)</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1660</x><y>1059</y><w>30</w><h>170</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>10;10;10;150</additional_attributes></element><element><id>Relation</id><coordinates><x>1660</x><y>1059</y><w>250</w><h>170</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>10;10;10;100;230;150</additional_attributes></element><element><id>UMLClass</id><coordinates><x>1020</x><y>969</y><w>230</w><h>110</h></coordinates><panel_attributes>&lt;&lt;abstract&gt;&gt;
+Generador
+--
++ recomendaciones: dict
++ estrategia: RecomendadorStrategy
+--
++generar_recomendacion() &lt;&lt;abstract&gt;&gt;
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>780</x><y>1169</y><w>190</w><h>40</h></coordinates><panel_attributes>RecomendaciónCancion</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>870</x><y>1069</y><w>280</w><h>120</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>260;10;260;50;10;50;10;100</additional_attributes></element><element><id>UMLClass</id><coordinates><x>1150</x><y>1159</y><w>220</w><h>60</h></coordinates><panel_attributes>&lt;&lt;abstract&gt;&gt;
+DecoradorRecomendacion
+-
+generador: Generador
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1120</x><y>1069</y><w>180</w><h>110</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>10;10;10;50;160;50;160;90</additional_attributes></element><element><id>Relation</id><coordinates><x>1240</x><y>1009</y><w>220</w><h>200</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-
+m1=0..1
+m2=0..1</panel_attributes><additional_attributes>130;170;200;170;200;10;10;10</additional_attributes></element><element><id>UMLClass</id><coordinates><x>1180</x><y>1319</y><w>190</w><h>40</h></coordinates><panel_attributes>DecoradorPlayList</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1440</x><y>1319</y><w>190</w><h>40</h></coordinates><panel_attributes>DecoradorArtista</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1250</x><y>1209</y><w>30</w><h>130</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>10;10;10;110</additional_attributes></element><element><id>Relation</id><coordinates><x>1250</x><y>1209</y><w>300</w><h>130</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>10;10;10;60;280;60;280;110</additional_attributes></element><element><id>UMLClass</id><coordinates><x>1020</x><y>489</y><w>250</w><h>140</h></coordinates><panel_attributes>CatalogoStreaming
+--
++ canciones: list
++ playlists: list
++ artistas: lits
+--
++buscar(id)
++anyadir_cancion8cancion)
++anyadir_playlist(playlist)
++anyadir_artista(artista)</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>730</x><y>769</y><w>280</w><h>40</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;&lt;-
+m1=1
+m2=1</panel_attributes><additional_attributes>10;10;260;10</additional_attributes></element><element><id>UMLClass</id><coordinates><x>1050</x><y>239</y><w>160</w><h>150</h></coordinates><panel_attributes>Cancion
+--
++ atributos: dict
++ id: int
+--
++ get_titulo()
++ get_fecha()
++ get_atributos_sonoros()
++ get_atributos_sentimentales()</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>660</x><y>469</y><w>210</w><h>170</h></coordinates><panel_attributes>Artista
+--
++canciones: list
++atributos: dict
++nombre: str
++fecha: str
+--
++ get_nombre()
++ get_fecha()
++ actualizar_media_atributos()
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1390</x><y>459</y><w>190</w><h>160</h></coordinates><panel_attributes>Playlist
+--
+canciones: list
+atributos: dict
+titulo: str
+fecha: str
+--
++ get_titulo()
++ get_fecha()
++ actualizar_media_atributos()
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>860</x><y>539</y><w>180</w><h>40</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-
+m1=1..*
+m2=1</panel_attributes><additional_attributes>160;10;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>1120</x><y>379</y><w>50</w><h>130</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-
+m1=1..*
+m2=1</panel_attributes><additional_attributes>10;110;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>1260</x><y>529</y><w>150</w><h>40</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-
+m1=1..*
+m2=1</panel_attributes><additional_attributes>10;10;130;10</additional_attributes></element><element><id>Relation</id><coordinates><x>1200</x><y>369</y><w>280</w><h>110</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-
+m1=1..*
+m2=0..*</panel_attributes><additional_attributes>240;90;240;10;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>810</x><y>359</y><w>260</w><h>130</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-
+m1=1..*
+m2=1
+
+</panel_attributes><additional_attributes>10;110;10;20;240;20</additional_attributes></element><element><id>UMLClass</id><coordinates><x>400</x><y>719</y><w>340</w><h>180</h></coordinates><panel_attributes>PlataformaStreaming
+--
++ recomendador: Recomendador
+--
++ establecer_configuracion(artistas: bool, playlist: bool)
++ enviar_escucha(id, date)
++ cambiar_estrategia(estrategia)
++ solicitar_recomendacion()</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1120</x><y>619</y><w>30</w><h>70</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-</panel_attributes><additional_attributes>10;50;10;10</additional_attributes></element><element><id>UMLClass</id><coordinates><x>2070</x><y>639</y><w>260</w><h>110</h></coordinates><panel_attributes>&lt;&lt;abstract&gt;&gt;
+CalculadorEstadistico
+--
+manejador: CalculadorEstadistico
+--
+manejar_cancion &lt;&lt;abstract</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>2010</x><y>739</y><w>200</w><h>220</h></coordinates><panel_attributes>lt=&lt;&lt;-</panel_attributes><additional_attributes>180;10;180;120;10;120;10;200</additional_attributes></element><element><id>UMLClass</id><coordinates><x>1910</x><y>939</y><w>260</w><h>110</h></coordinates><panel_attributes>CalculadorMedia
+
+--
++ manejar_cancion()
+- calcular_media_son(sesion)
+- calcular_media_sent(sesion)</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>2250</x><y>929</y><w>260</w><h>110</h></coordinates><panel_attributes>&lt;&lt;abstract&gt;&gt;
+CalculadorStd
+
+--
+manejar_cancion()
+- calcular_std_son(sesion)
+- calcular_std_sent(sesion)</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1120</x><y>849</y><w>30</w><h>140</h></coordinates><panel_attributes>lt=&lt;-
+</panel_attributes><additional_attributes>10;120;10;10</additional_attributes></element><element><id>UMLClass</id><coordinates><x>2020</x><y>1209</y><w>190</w><h>40</h></coordinates><panel_attributes>StrategyCompuesta
+--
+- buscar(estadisticos, catalogo)</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1660</x><y>1059</y><w>460</w><h>170</h></coordinates><panel_attributes>lt=&lt;&lt;.</panel_attributes><additional_attributes>10;10;10;100;440;150</additional_attributes></element><element><id>Relation</id><coordinates><x>2180</x><y>739</y><w>230</w><h>210</h></coordinates><panel_attributes>lt=&lt;&lt;-</panel_attributes><additional_attributes>10;10;10;120;210;120;210;190</additional_attributes></element><element><id>UMLClass</id><coordinates><x>1540</x><y>699</y><w>260</w><h>110</h></coordinates><panel_attributes>SesionEscucha
+--
++ cola: deque
++ estadisticos: dict
+--
++ anyadir_cancion(cancion)</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1790</x><y>689</y><w>300</w><h>80</h></coordinates><panel_attributes>lt=&lt;-</panel_attributes><additional_attributes>280;10;10;60</additional_attributes></element><element><id>Relation</id><coordinates><x>2180</x><y>519</y><w>260</w><h>210</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;-
+m1=0..1
+m2=0..1</panel_attributes><additional_attributes>150;180;240;180;240;10;10;10;10;120</additional_attributes></element><element><id>Relation</id><coordinates><x>1270</x><y>759</y><w>290</w><h>40</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;&lt;&lt;-
+m1=1
+m2=1</panel_attributes><additional_attributes>10;10;270;10</additional_attributes></element></diagram>
